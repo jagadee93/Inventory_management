@@ -1,0 +1,32 @@
+{
+  "name": "server",
+  "version": "1.0.0",
+  "description": "this is a backend to the inventory mgmt",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server",
+    "dev": "nodemon server"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jagdeeshgongidi/Inventory_management.git"
+  },
+  "author": "jagadeesh",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/jagdeeshgongidi/Inventory_management/issues"
+  },
+  "homepage": "https://github.com/jagdeeshgongidi/Inventory_management#readme",
+  "dependencies": {
+    "bcrypt": "^5.1.0",
+    "body-parser": "^1.20.1",
+    "cookie-parser": "^1.4.6",
+    "cors": "^2.8.5",
+    "date-fns": "^2.29.3",
+    "dotenv": "^16.0.3",
+    "express": "^4.18.2",
+    "express-async-handler": "^1.2.0",
+    "jsonwebtoken": "^9.0.0",
+    "mongoose": "^6.7.1"
+  }
+}
