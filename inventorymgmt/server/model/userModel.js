@@ -40,7 +40,8 @@ const userSchema = Schema({
     bio: {
         type: String,
         maxLength: [100, "bio can be upto 30 characters"],
-        required: false
+        required: false,
+        default: "bio"
     },
 
 },

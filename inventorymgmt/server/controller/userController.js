@@ -1,3 +1,5 @@
+//when updating make sure that don't user lean method
+
 const User = require("../model/userModel");
 const asyncHandler = require("express-async-handler");
 const bcrypt = require("bcrypt");
@@ -119,10 +121,9 @@ const logoutUser = asyncHandler(async (req, res) => {
 
 
 const getUser = asyncHandler(async (req, res) => {
-    const { user } = req;
-    const existedUser = await User.findById(user._id).select("-password").lean();
+    const user = await User.findById(req.user._id).select("-password").lean();
     if (user) {
-        const { _id, name, email } = existedUser;
+        const { _id, name, email } = user;
         res.status(201).json({
             status: 'success',
             data: {
@@ -136,11 +137,79 @@ const getUser = asyncHandler(async (req, res) => {
 
 })
 
+
+const loginstatus = asyncHandler(async (req, res) => {
+    const token = req.cookies.token;
+    if (!token) {
+        return res.json(false)
+    }
+
+    const verified = jwt.verify(token, process.env.JWT_SECRET)
+    if (verified) {
+        return res.json(true)
+    }
+    return res.json(false)
+})
+
+
+const updateuser = asyncHandler(async (req, res) => {
+    const user = await User.findById(req.user._id).select("-password");
+    if (user) {
+        console.log(user)
+        const { name, photo, bio } = user;
+        user.name = req.body.name || name;
+        user.photo = req.body.photo || photo;
+        user.bio = req.body.bio || bio;
+
+        const updatedUser = await user.save();
+        res.json({
+            name: updatedUser.name,
+            bio: updatedUser.bio,
+            photo: updateuser.photo,
+
+        })
+    }
+
+    res.status(400)
+    throw new Error("invalid user")
+
+})
+
+
+const changePassword = asyncHandler(async (req, res) => {
+    const { password, newpassword } = req.body;
+    //validating
+    if (!password || !newpassword) {
+        res.status(400)
+        throw new Error("please add old password and newpassword ")
+    }
+    const user = await User.findById(req.user._id).select("password")
+    console.log(user)
+    if (user) {
+        const isPassWordMatch = await bcrypt.compare(password, user.password)
+        if (isPassWordMatch) {
+            user.password = newpassword;
+            user.save();
+            res.status(200).json({ message: "password successfully updated" })
+        }
+        res.status(400)
+        throw new Error("invalid old password")
+    }
+
+    res.status(400)
+    throw new Error("invalid user")
+
+
+});
+
 module.exports = {
     createUser,
     loginUser,
     logoutUser,
-    getUser
+    getUser,
+    loginstatus,
+    updateuser,
+    changePassword
 }
 
 
