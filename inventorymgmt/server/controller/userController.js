@@ -1,9 +1,12 @@
 //when updating make sure that don't user lean method
-
+const crypto = require("node:crypto")
 const User = require("../model/userModel");
 const asyncHandler = require("express-async-handler");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
+const Token = require("../model/tokenModel");
+const sendEmail = require("../utils/sendEmail");
+const token = require("../model/tokenModel");
 const generateToken = (id) => {
     return jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: "1d" })
 }
@@ -11,6 +14,9 @@ const generateToken = (id) => {
 
 //register user 
 const createUser = asyncHandler(async (req, res) => {
+
+
+
     const { email, name, password } = req.body;
     console.log(email, name, password);
     if (!email || !password || !name) {
@@ -163,10 +169,10 @@ const updateuser = asyncHandler(async (req, res) => {
 
         const updatedUser = await user.save();
         res.json({
+
             name: updatedUser.name,
             bio: updatedUser.bio,
             photo: updateuser.photo,
-
         })
     }
 
@@ -198,9 +204,86 @@ const changePassword = asyncHandler(async (req, res) => {
 
     res.status(400)
     throw new Error("invalid user")
-
-
 });
+
+
+
+
+const forgotPassword = asyncHandler(async (req, res) => {
+    const { email } = req.body;
+    if (!email) {
+        res.status(400)
+        throw new Error("Please enter a valid email")
+    }
+
+    const user = await User.findOne({ email })
+    if (!user) {
+        res.status(404)
+        throw new Error("user does not exist")
+    }
+
+    //delete of the previous token if it exists 
+    const token = Token.findOne({ userId: user._id })
+    if (token) {
+        await token.deleteOne()
+    }
+    //create a reset token 
+    let resetToken = crypto.randomBytes(32).toString("hex") + user._id;
+    const hashedToken = crypto.createHash("sha256").update(resetToken).digest("hex");
+    //save token into db
+
+    await new Token({
+        userId: user._id,
+        token: hashedToken,
+        createdAt: Date.now(),
+        expiresAt: Date.now() + 30 * (60 * 1000),//30min
+    }).save();
+    //construct url 
+    const resetUrl = `${process.env.FRONT_END_URL}/resetpassword/${resetToken}`
+    const message = `
+    <h1>Hello ${user.name}</h1>
+    <p>please use the url below to reset your  password </p>
+    <p>This reset link is valid for only 30 minutes</p>
+    <a href=${resetUrl} clicktracking=off >${resetUrl}</a>
+    <p>Regards Jagadeeshgongidi</p>`;
+    const subject = "password reset Request";
+    const send_to = user.email;
+    const sent_from = process.env.EMAIL_USER;
+    try {
+        await sendEmail(subject, message, send_to, sent_from);
+        res.status(200).json({ success: true, message: "reset email sent" })
+    } catch (err) {
+        res.status(500)
+        throw new Error("email not sent please try again after sometime")
+    }
+})
+
+
+const resetpassword = asyncHandler(async (req, res) => {
+
+    const { password } = req.body;
+    if (!password || password.length < 6) {
+        res.status(400)
+        throw new Error("password must be at least 6 characters")
+    }
+    const { resetToken } = req.params;
+    //hash token then compare it to the token in DB
+    //because we have saved hashed version in db
+    const hashedToken = crypto.createHash("sha256").update(resetToken).digest("hex");
+    const userToken = await Token.findOne({ token: hashedToken, expiresAt: { $gt: Date.now() } })
+    console.log(resetToken, hashedToken, userToken.token)
+
+    if (!userToken) {
+        res.status(404)
+        throw new Error("invalid or expired token ")
+    }
+    //find the user
+    const user = await User.findOne({ _id: userToken.userId })
+
+    user.password = password;
+    await user.save();
+    res.status(200).json({ message: "password reset successful please login" })
+})
 
 module.exports = {
     createUser,
@@ -209,7 +292,9 @@ module.exports = {
     getUser,
     loginstatus,
     updateuser,
-    changePassword
+    changePassword,
+    forgotPassword,
+    resetpassword
 }
 
 

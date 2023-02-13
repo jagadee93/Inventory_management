@@ -17,7 +17,10 @@ router.route("/updateuser")
 
 router.route("/updatepassword")
     .patch(protectRoute.protect, userController.changePassword)
-
+router.route("/forgotpassword")
+    .post(userController.forgotPassword)
+router.route("/resetpassword/:resetToken")
+    .put(userController.resetpassword)
 
 module.exports = router
 module.exports = router
